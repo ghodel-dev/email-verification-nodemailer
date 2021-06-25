@@ -7,27 +7,36 @@ const User = require("./userModel");
 exports.signup = async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    const token = await jwt.sign({ email }, process.env.SECRET_KEY);
 
-    const hashedPassword = await bcrypt.hashSync(password, 10);
+    const findUser = await User.findOne({ email });
 
-    const user = await new User({
-      username,
-      email,
-      password: hashedPassword,
-      confirmationCode: token,
-    }).save();
+    if (!findUser) {
+      const token = await jwt.sign({ email }, process.env.SECRET_KEY);
 
-    const sendEmail = await nodemailer.sendConfirmationEmail(
-      user.username,
-      user.email,
-      user.confirmationCode
-    );
+      const hashedPassword = await bcrypt.hashSync(password, 10);
 
-    res.status(200).send({
-      message:
-        "User was registered successfully. Please check your email to activate your account",
-    });
+      const user = await new User({
+        username,
+        email,
+        password: hashedPassword,
+        confirmationCode: token,
+      }).save();
+
+      const sendEmail = await nodemailer.sendConfirmationEmail(
+        user.username,
+        user.email,
+        user.confirmationCode
+      );
+
+      res.status(200).send({
+        message:
+          "User was registered successfully. Please check your email to activate your account",
+      });
+    } else {
+      res.status(400).send({
+        message: "User already registered.",
+      });
+    }
   } catch (error) {
     console.log(error);
     res.status(500).send({ message: error });
